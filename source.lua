@@ -1,20 +1,21 @@
 --[[
-    JanBlox v1.0.0 (Bug Fix Version)
-    Simple, No Animations, Robust HTTP Handling
+    JanBlox v1.0.0
+    - Full Global Chat & Profile System
+    - Minimize hides window and shows a draggable "JB" button
+    - No Animations
 ]]
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
 -- // CONFIGURATION //
 local API_URL = "https://global-chat-fr.janskibananski1602.workers.dev"
 local VERSION = "v1.0.0"
 
--- // HTTP COMPATIBILITY //
+-- // HTTP CHECK //
 local http_request = request or http_request or (syn and syn.request) or (fluxus and fluxus.request)
 if not http_request then
     return game.StarterGui:SetCore("SendNotification", {
@@ -23,7 +24,7 @@ if not http_request then
     })
 end
 
--- // SAFE REQUEST WRAPPER //
+-- // API WRAPPER //
 local function APIRequest(endpoint, method, body)
     local response = nil
     local success, err = pcall(function()
@@ -47,20 +48,22 @@ local function APIRequest(endpoint, method, body)
 end
 
 -- // CLEANUP //
-if CoreGui:FindFirstChild("JanBloxFixed") then
-    CoreGui.JanBloxFixed:Destroy()
+if CoreGui:FindFirstChild("JanBloxMain") then
+    CoreGui.JanBloxMain:Destroy()
 end
 
--- // UI CREATION //
+-- // GUI SETUP //
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "JanBloxFixed"
+ScreenGui.Name = "JanBloxMain"
 ScreenGui.Parent = CoreGui
 ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- 1. Loading Frame (Simple, No Animation)
+-- // 1. LOADING SCREEN //
 local LoadingFrame = Instance.new("Frame")
 LoadingFrame.Size = UDim2.new(1, 0, 1, 0)
 LoadingFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+LoadingFrame.ZIndex = 10
 LoadingFrame.Parent = ScreenGui
 
 local LoadingLabel = Instance.new("TextLabel")
@@ -74,17 +77,32 @@ LoadingLabel.Parent = LoadingFrame
 task.wait(1)
 LoadingFrame:Destroy()
 
--- 2. Main GUI
+-- // 2. FLOATING BUTTON (For Minimize) //
+local MiniBtn = Instance.new("TextButton")
+MiniBtn.Name = "MiniBtn"
+MiniBtn.Size = UDim2.new(0, 50, 0, 50)
+MiniBtn.Position = UDim2.new(0, 20, 0.5, -25)
+MiniBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+MiniBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MiniBtn.Text = "JB"
+MiniBtn.TextSize = 20
+MiniBtn.Font = Enum.Font.GothamBold
+MiniBtn.Visible = false -- Hidden by default
+MiniBtn.Parent = ScreenGui
+
+local MiniCorner = Instance.new("UICorner"); MiniCorner.CornerRadius = UDim.new(0, 12); MiniCorner.Parent = MiniBtn
+local MiniStroke = Instance.new("UIStroke"); MiniStroke.Color = Color3.fromRGB(80, 80, 80); MiniStroke.Thickness = 2; MiniStroke.Parent = MiniBtn
+
+-- // 3. MAIN WINDOW //
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 550, 0, 350)
 MainFrame.Position = UDim2.new(0.5, -275, 0.5, -175)
 MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
 MainFrame.BorderSizePixel = 0
-MainFrame.ClipsDescendants = true -- Important for minimize
+MainFrame.ClipsDescendants = true
 MainFrame.Parent = ScreenGui
 
--- Rounded Corners
 local UICorner = Instance.new("UICorner")
 UICorner.CornerRadius = UDim.new(0, 6)
 UICorner.Parent = MainFrame
@@ -95,17 +113,8 @@ TopBar.Size = UDim2.new(1, 0, 0, 35)
 TopBar.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
 TopBar.BorderSizePixel = 0
 TopBar.Parent = MainFrame
-local TopCorner = Instance.new("UICorner")
-TopCorner.CornerRadius = UDim.new(0, 6)
-TopCorner.Parent = TopBar
-
--- Fix bottom corners of topbar showing if rounded
-local TopBarFiller = Instance.new("Frame")
-TopBarFiller.Size = UDim2.new(1, 0, 0, 10)
-TopBarFiller.Position = UDim2.new(0, 0, 1, -10)
-TopBarFiller.BackgroundColor3 = TopBar.BackgroundColor3
-TopBarFiller.BorderSizePixel = 0
-TopBarFiller.Parent = TopBar
+local TopCorner = Instance.new("UICorner"); TopCorner.CornerRadius = UDim.new(0, 6); TopCorner.Parent = TopBar
+local TopFiller = Instance.new("Frame"); TopFiller.Size = UDim2.new(1,0,0,10); TopFiller.Position=UDim2.new(0,0,1,-10); TopFiller.BackgroundColor3=TopBar.BackgroundColor3; TopFiller.BorderSizePixel=0; TopFiller.Parent=TopBar
 
 local Title = Instance.new("TextLabel")
 Title.Text = "JanBlox " .. VERSION
@@ -128,37 +137,66 @@ OnlineText.Font = Enum.Font.Gotham
 OnlineText.TextSize = 13
 OnlineText.Parent = TopBar
 
--- Buttons
-local function CreateTopBtn(text, offset, color, callback)
-    local btn = Instance.new("TextButton")
-    btn.Text = text
-    btn.Size = UDim2.new(0, 35, 0, 35)
-    btn.Position = UDim2.new(1, offset, 0, 0)
-    btn.BackgroundColor3 = color
-    btn.TextColor3 = Color3.new(1,1,1)
-    btn.Font = Enum.Font.GothamBold
-    btn.BorderSizePixel = 0
-    btn.Parent = TopBar
-    
-    -- Round only the specific corners for style (optional, keeping simple)
-    if text == "X" then
-        local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0,6); c.Parent = btn
-        local f = Instance.new("Frame"); f.Size = UDim2.new(0,10,1,0); f.BackgroundTransparency=1; f.Parent=btn -- filler
+-- // MINIMIZE LOGIC //
+local function ToggleWindow(state)
+    if state == "min" then
+        MainFrame.Visible = false
+        MiniBtn.Visible = true
+    else
+        MainFrame.Visible = true
+        MiniBtn.Visible = false
     end
-    
-    btn.MouseButton1Click:Connect(callback)
 end
 
-CreateTopBtn("X", -35, Color3.fromRGB(200, 60, 60), function() ScreenGui:Destroy() end)
-CreateTopBtn("-", -70, Color3.fromRGB(80, 80, 80), function()
-    if MainFrame.Size.Y.Offset > 40 then
-        MainFrame.Size = UDim2.new(0, 550, 0, 35) -- Minimize
-    else
-        MainFrame.Size = UDim2.new(0, 550, 0, 350) -- Restore
-    end
-end)
+-- Buttons
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Text = "X"
+CloseBtn.Size = UDim2.new(0, 35, 0, 35)
+CloseBtn.Position = UDim2.new(1, -35, 0, 0)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+CloseBtn.TextColor3 = Color3.new(1,1,1)
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.Parent = TopBar
+local cc = Instance.new("UICorner"); cc.CornerRadius=UDim.new(0,6); cc.Parent=CloseBtn
+CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
--- Sidebar
+local MinBtn = Instance.new("TextButton")
+MinBtn.Text = "-"
+MinBtn.Size = UDim2.new(0, 35, 0, 35)
+MinBtn.Position = UDim2.new(1, -70, 0, 0)
+MinBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+MinBtn.TextColor3 = Color3.new(1,1,1)
+MinBtn.Font = Enum.Font.GothamBold
+MinBtn.Parent = TopBar
+MinBtn.MouseButton1Click:Connect(function() ToggleWindow("min") end)
+
+MiniBtn.MouseButton1Click:Connect(function() ToggleWindow("open") end)
+
+-- // DRAGGING //
+local function MakeDraggable(frame, handle)
+    handle = handle or frame
+    local dragging, dragInput, dragStart, startPos
+    handle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true; dragStart = input.Position; startPos = frame.Position
+        end
+    end)
+    handle.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        elseif input.UserInputState == Enum.UserInputState.End then
+            dragging = false
+        end
+    end)
+end
+MakeDraggable(MainFrame, TopBar)
+MakeDraggable(MiniBtn, MiniBtn)
+
+-- Sidebar & Content
 local Sidebar = Instance.new("Frame")
 Sidebar.Size = UDim2.new(0, 120, 1, -35)
 Sidebar.Position = UDim2.new(0, 0, 0, 35)
@@ -166,34 +204,11 @@ Sidebar.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 Sidebar.BorderSizePixel = 0
 Sidebar.Parent = MainFrame
 
--- Content
 local Content = Instance.new("Frame")
 Content.Size = UDim2.new(1, -120, 1, -35)
 Content.Position = UDim2.new(0, 120, 0, 35)
 Content.BackgroundTransparency = 1
 Content.Parent = MainFrame
-
--- Draggable Logic
-local dragging, dragInput, dragStart, startPos
-TopBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true; dragStart = input.Position; startPos = MainFrame.Position
-    end
-end)
-TopBar.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end
-end)
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    elseif input.UserInputState == Enum.UserInputState.End then
-        dragging = false
-    end
-end)
-
--- // TAB SYSTEM //
-local currentTabFunc = nil
 
 local function ClearContent()
     for _, child in pairs(Content:GetChildren()) do child:Destroy() end
@@ -210,22 +225,16 @@ local function CreateTabBtn(text, index, func)
     btn.TextSize = 12
     btn.Parent = Sidebar
     local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0,4); c.Parent = btn
-    
-    btn.MouseButton1Click:Connect(function()
-        ClearContent()
-        currentTabFunc = func -- Stop old loops if any (advanced logic simplified here)
-        func()
-    end)
+    btn.MouseButton1Click:Connect(function() ClearContent(); func() end)
 end
 
--- // TAB 1: GLOBAL CHAT //
+-- // CHAT //
 local function LoadChat()
     local ChatList = Instance.new("ScrollingFrame")
     ChatList.Size = UDim2.new(1, -10, 1, -50)
     ChatList.Position = UDim2.new(0, 5, 0, 5)
     ChatList.BackgroundTransparency = 1
     ChatList.ScrollBarThickness = 4
-    ChatList.CanvasSize = UDim2.new(0, 0, 0, 0)
     ChatList.AutomaticCanvasSize = Enum.AutomaticSize.Y
     ChatList.Parent = Content
     
@@ -234,7 +243,6 @@ local function LoadChat()
     Layout.Padding = UDim.new(0, 5)
     Layout.Parent = ChatList
 
-    -- Input
     local InputFrame = Instance.new("Frame")
     InputFrame.Size = UDim2.new(1, -10, 0, 35)
     InputFrame.Position = UDim2.new(0, 5, 1, -40)
@@ -266,7 +274,7 @@ local function LoadChat()
     local function RenderMessage(msgData)
         local MsgFrame = Instance.new("Frame")
         MsgFrame.Size = UDim2.new(1, 0, 0, 0)
-        MsgFrame.AutomaticSize = Enum.AutomaticSize.Y -- Auto height
+        MsgFrame.AutomaticSize = Enum.AutomaticSize.Y
         MsgFrame.BackgroundTransparency = 1
         MsgFrame.LayoutOrder = msgData.timestamp or 0
         MsgFrame.Parent = ChatList
@@ -280,37 +288,28 @@ local function LoadChat()
         UserLabel.Font = Enum.Font.GothamBold
         UserLabel.TextSize = 13
         UserLabel.TextXAlignment = Enum.TextXAlignment.Left
-        UserLabel.Position = UDim2.new(0, 0, 0, 0)
         UserLabel.Parent = MsgFrame
 
         local ContentLabel = Instance.new("TextLabel")
         ContentLabel.Text = msgData.content or ""
-        ContentLabel.Size = UDim2.new(1, 0, 0, 0) -- Width fills, height auto
+        ContentLabel.Size = UDim2.new(1, -(UserLabel.AbsoluteSize.X + 10), 0, 0)
         ContentLabel.AutomaticSize = Enum.AutomaticSize.Y
+        ContentLabel.Position = UDim2.new(0, UserLabel.AbsoluteSize.X + 5, 0, 0)
         ContentLabel.BackgroundTransparency = 1
         ContentLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         ContentLabel.Font = Enum.Font.Gotham
         ContentLabel.TextSize = 13
         ContentLabel.TextWrapped = true
         ContentLabel.TextXAlignment = Enum.TextXAlignment.Left
-        ContentLabel.Position = UDim2.new(0, UserLabel.AbsoluteSize.X + 5, 0, 0)
-        ContentLabel.Size = UDim2.new(1, -(UserLabel.AbsoluteSize.X + 5), 0, 0)
         ContentLabel.Parent = MsgFrame
     end
 
-    -- Send Logic
     SendBtn.MouseButton1Click:Connect(function()
         if TextBox.Text == "" then return end
         local txt = TextBox.Text
-        TextBox.Text = "" -- Clear visual
-        
+        TextBox.Text = ""
         task.spawn(function()
-            APIRequest("/messages/global", "POST", {
-                username = LocalPlayer.Name,
-                userId = LocalPlayer.UserId,
-                content = txt
-            })
-            -- Manually refresh after send
+            APIRequest("/messages/global", "POST", {username = LocalPlayer.Name, content = txt})
             local msgs = APIRequest("/messages/global", "GET")
             if msgs then
                 for _, c in pairs(ChatList:GetChildren()) do if c:IsA("Frame") then c:Destroy() end end
@@ -319,30 +318,26 @@ local function LoadChat()
         end)
     end)
 
-    -- Auto Loop
     task.spawn(function()
         while ChatList.Parent do
             local msgs = APIRequest("/messages/global", "GET")
             if msgs then
-                -- Basic refresh: clear all and redraw (inefficient but works for simple exploits)
-                -- A better way checks IDs, but the API is simple.
                 for _, c in pairs(ChatList:GetChildren()) do if c:IsA("Frame") then c:Destroy() end end
                 for _, m in pairs(msgs) do RenderMessage(m) end
-                ChatList.CanvasPosition = Vector2.new(0, 9999) -- Auto scroll bottom
+                ChatList.CanvasPosition = Vector2.new(0, 9999)
             end
-            task.wait(3) -- Poll every 3 seconds
+            task.wait(3)
         end
     end)
 end
 
--- // TAB 2: PROFILE //
+-- // PROFILE //
 local function LoadProfile()
     local PContainer = Instance.new("ScrollingFrame")
     PContainer.Size = UDim2.new(1, 0, 1, 0)
     PContainer.BackgroundTransparency = 1
     PContainer.Parent = Content
     
-    -- Avatar
     local Av = Instance.new("ImageLabel")
     Av.Size = UDim2.new(0, 80, 0, 80)
     Av.Position = UDim2.new(0, 10, 0, 10)
@@ -369,10 +364,8 @@ local function LoadProfile()
     User.TextColor3 = Color3.fromRGB(150, 150, 150)
     User.TextXAlignment = Enum.TextXAlignment.Left
     User.Font = Enum.Font.Gotham
-    User.TextSize = 14
     User.Parent = PContainer
-
-    -- Action Buttons (Mock)
+    
     local function MkBtn(txt, y, col)
         local b = Instance.new("TextButton")
         b.Text = txt
@@ -383,59 +376,47 @@ local function LoadProfile()
         b.Font = Enum.Font.Gotham
         b.Parent = PContainer
         local cr = Instance.new("UICorner"); cr.CornerRadius = UDim.new(0,4); cr.Parent = b
-        return b
     end
-    
-    MkBtn("Friends List (View)", 110, Color3.fromRGB(60, 60, 65))
-    MkBtn("Blocked Users", 150, Color3.fromRGB(60, 60, 65))
-    MkBtn("Device: " .. (UserInputService.TouchEnabled and "Mobile" or "PC"), 190, Color3.fromRGB(40, 40, 40))
+    MkBtn("Friends List", 110, Color3.fromRGB(60,60,65))
+    MkBtn("Blocked Users", 150, Color3.fromRGB(60,60,65))
 end
 
--- // TAB 3: SETTINGS //
+-- // SETTINGS //
 local function LoadSettings()
     local SLabel = Instance.new("TextLabel")
-    SLabel.Text = "Settings"
+    SLabel.Text = "Notifications"
     SLabel.Size = UDim2.new(1,0,0,30)
     SLabel.TextColor3 = Color3.new(1,1,1)
     SLabel.BackgroundTransparency = 1
+    SLabel.Font = Enum.Font.GothamBold
     SLabel.Parent = Content
     
     local Toggle = Instance.new("TextButton")
-    Toggle.Text = "Notifications: ON"
+    Toggle.Text = "Enabled"
     Toggle.Size = UDim2.new(0.5, 0, 0, 30)
-    Toggle.Position = UDim2.new(0.25, 0, 0, 50)
+    Toggle.Position = UDim2.new(0.25, 0, 0, 40)
     Toggle.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
     Toggle.Parent = Content
     local c = Instance.new("UICorner"); c.Parent = Toggle
-    
     Toggle.MouseButton1Click:Connect(function()
-        if Toggle.Text == "Notifications: ON" then
-            Toggle.Text = "Notifications: OFF"
-            Toggle.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+        if Toggle.Text == "Enabled" then
+            Toggle.Text = "Disabled"; Toggle.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
         else
-            Toggle.Text = "Notifications: ON"
-            Toggle.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
+            Toggle.Text = "Enabled"; Toggle.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
         end
     end)
 end
 
--- // INIT //
 CreateTabBtn("Global Chat", 0, LoadChat)
 CreateTabBtn("Profile", 1, LoadProfile)
 CreateTabBtn("Settings", 2, LoadSettings)
-
--- Load Default
 LoadChat()
 
--- // GLOBAL ONLINE POLLING //
+-- // POLLING //
 task.spawn(function()
     while ScreenGui.Parent do
         local data = APIRequest("/online-count", "GET")
-        if data and data.count then
-            OnlineText.Text = "Online: " .. tostring(data.count)
-        else
-            OnlineText.Text = "Online: Err"
-        end
+        if data and data.count then OnlineText.Text = "Online: " .. tostring(data.count) end
         task.wait(10)
     end
 end)
