@@ -5,7 +5,7 @@
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local API_URL = "https://global-chat-api-0qdb.onrender.com"
+local API_URL = "https://global-chat-fr.janskibananski1602.workers.dev/"
 
 -- UI Creation
 local ScreenGui = Instance.new("ScreenGui")
