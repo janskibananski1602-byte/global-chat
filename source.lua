@@ -1,11 +1,11 @@
--- JanBlox v1.0.0
+-- JanBlox v1.0.0 (Updated for Cloudflare)
 -- Simple, No Animations, All Devices Compatible
 -- Features: Loading, UI, Minimizable, Closable, Online Count, Global Chat, Profiles, Social
 
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local API_URL = "https://global-chat-fr.janskibananski1602.workers.dev/"
+local API_URL = "https://global-chat-fr.janskibananski1602.workers.dev"
 
 -- UI Creation
 local ScreenGui = Instance.new("ScreenGui")
@@ -69,7 +69,7 @@ Content.Parent = MainFrame
 
 -- Chat Area
 local ChatBox = Instance.new("ScrollingFrame")
-ChatBox.Size = UDim2.new(1, -20, 0.7, 0)
+ChatBox.Size = UDim2.new(1, -20, 0.6, 0)
 ChatBox.Position = UDim2.new(0, 10, 0, 10)
 ChatBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 ChatBox.CanvasSize = UDim2.new(0, 0, 5, 0)
@@ -77,7 +77,7 @@ ChatBox.Parent = Content
 
 local ChatInput = Instance.new("TextBox")
 ChatInput.Size = UDim2.new(1, -80, 0, 30)
-ChatInput.Position = UDim2.new(0, 10, 0.7, 20)
+ChatInput.Position = UDim2.new(0, 10, 0.6, 20)
 ChatInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 ChatInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 ChatInput.PlaceholderText = "Type message..."
@@ -87,10 +87,32 @@ ChatInput.Parent = Content
 local SendBtn = Instance.new("TextButton")
 SendBtn.Text = "Send"
 SendBtn.Size = UDim2.new(0, 60, 0, 30)
-SendBtn.Position = UDim2.new(1, -70, 0.7, 20)
+SendBtn.Position = UDim2.new(1, -70, 0.6, 20)
 SendBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
 SendBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 SendBtn.Parent = Content
+
+-- Social Buttons (Friend, Follow, Block)
+local SocialFrame = Instance.new("Frame")
+SocialFrame.Size = UDim2.new(1, -20, 0, 40)
+SocialFrame.Position = UDim2.new(0, 10, 0.6, 60)
+SocialFrame.BackgroundTransparency = 1
+SocialFrame.Parent = Content
+
+local function createSocialBtn(text, pos, color)
+    local btn = Instance.new("TextButton")
+    btn.Text = text
+    btn.Size = UDim2.new(0.3, -5, 1, 0)
+    btn.Position = pos
+    btn.BackgroundColor3 = color
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Parent = SocialFrame
+    return btn
+end
+
+local FriendBtn = createSocialBtn("Friend", UDim2.new(0, 0, 0, 0), Color3.fromRGB(50, 150, 50))
+local FollowBtn = createSocialBtn("Follow", UDim2.new(0.35, 0, 0, 0), Color3.fromRGB(50, 50, 150))
+local BlockBtn = createSocialBtn("Block", UDim2.new(0.7, 0, 0, 0), Color3.fromRGB(150, 50, 50))
 
 -- Functions
 local function updateOnlineCount()
@@ -134,6 +156,18 @@ local function fetchMessages()
     end)
 end
 
+local function sendSocialAction(action)
+    local target = LocalPlayer -- In a real scenario, you'd select a player
+    local data = {
+        userId = LocalPlayer.UserId,
+        targetId = target.UserId,
+        action = action
+    }
+    pcall(function()
+        HttpService:PostAsync(API_URL .. "/social-action", HttpService:JSONEncode(data))
+    end)
+end
+
 SendBtn.MouseButton1Click:Connect(function()
     local text = ChatInput.Text
     if text ~= "" then
@@ -149,6 +183,10 @@ SendBtn.MouseButton1Click:Connect(function()
         ChatInput.Text = ""
     end
 end)
+
+FriendBtn.MouseButton1Click:Connect(function() sendSocialAction("friend") end)
+FollowBtn.MouseButton1Click:Connect(function() sendSocialAction("follow") end)
+BlockBtn.MouseButton1Click:Connect(function() sendSocialAction("block") end)
 
 CloseBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
@@ -184,4 +222,4 @@ spawn(function()
     end
 end)
 
-print("JanBlox v1.0.0 Loaded!")
+print("JanBlox v1.0.0 Loaded with Cloudflare!")
